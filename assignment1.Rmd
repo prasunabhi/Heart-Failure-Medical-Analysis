@@ -1,0 +1,680 @@
+
+```{r}
+# install.packages("tidyverse")
+library(tidyverse)
+
+# Assuming your data frame is called HeartFailure
+HeartFailure <- HeartFailure %>%
+  mutate(DEATH_EVENT = ifelse(DEATH_EVENT == 1, "Dead", "Alive"))
+
+HeartFailure$DEATH_EVENT <- factor(HeartFailure$DEATH_EVENT)
+```
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+# importing and load package
+install.packages("openxlsx")
+library(openxlsx)
+
+#load dataset
+#data <- read.xlsx(HeartFailure.xlsx)
+```
+
+1. Visualization
+
+(a.) Develop an overall view of relationship of dependent variable (Death event) with
+all continuous variables (see iris example with scatterplot matrix in Rcmdr)
+```{r}
+
+```
+
+b. Develop at least two perceptrons where there are three or more x-variables and
+Death event is the y-variable; calculate a measure of accuracy for each
+```{r}
+
+```
+
+c. Show at least two graphs with pairs of continuous variables and plot Death
+events (see iris example in RStudio) (10 points)
+```{r}
+ggplot(HeartFailure, aes(x = age, y = platelets)) +
+geom_point(aes(colour = DEATH_EVENT, shape= DEATH_EVENT), size = 3) +
+xlab("Age") +  # Corrected x-axis label
+ylab("platelets") +  # Corrected y-axis label
+ggtitle("Death event vs Age and platelets") +
+theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+ggplot(HeartFailure, aes(x = serum_sodium, y = serum_creatinine)) +
+geom_point(aes(colour = DEATH_EVENT, shape= DEATH_EVENT), size = 3) +
+xlab("Serum Sodium") + # Corrected x-axis label
+ylab("Serum Creatinine") + # Corrected y-axis label
+ggtitle("Serum Sodium vs Serum Creatinine") +
+theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+set.seed(7) # We went for this because it is your lucky number
+
+HeartFailure$DEATH_EVENT <- lapply(HeartFailure$DEATH_EVENT, function(x) {
+if(x == 1)
+HeartFailure$DEATH_EVENT <- -1
+else if(x == 0)
+HeartFailure$DEATH_EVENT <- 1
+else
+HeartFailure$DEATH_EVENT <- NULL
+})
+```
+
+2. Perceptrons (25 points)
+
+a. Develop at least two perceptrons where there are two x-variables, using continuous and binary x-variables, with Death event as the y-variable; calculate a measure of accuracy for each (10 points)
+
+```{r}
+#Creating training and testing data
+HeartFailure_index <- sample(nrow(HeartFailure), 0.7*nrow(HeartFailure))
+HeartFailure_train <- HeartFailure[HeartFailure_index, ]
+HeartFailure_test <- HeartFailure[-HeartFailure_index, ]
+```
+
+
+```{r}
+# Create the Perceptron Learning Algorithm
+perceptron <- function(X, y, numEpochs) {
+  results <- list()
+  w <- runif(ncol(X), -10, 10) #Initalize weights
+
+# For loop - number of generations(epochs) - number of times dataset is ran through
+for(j in 1:numEpochs) {
+  predictedResult <- numeric(length=100) # Initalize predictedResult vector
+  numIncorrect = 0 # Keeps track of # of missclassified points
+
+  # For loop - loop throught dataset
+  for(i in 1:length(y)) {
+    xi = as.numeric(unlist(X[i,])) # Convert dataframe to vector
+    predictedResult[i] = sign(w %*% xi) # Predict the point
+  
+    # If predicted point is incorrect - change weight
+    if(predictedResult[i] != y[i]) {
+      numIncorrect = numIncorrect + 1 # Add one to # of missclassified points
+      w <- w + as.numeric(y[i]) * xi # Update the weight w <- w + WiXi
+    }
+  }
+  # Print results of this generation(epoch)
+  cat("\nEpoch #: ", j)
+  cat("\nNumber Incorrect: ", numIncorrect)
+  cat("\nFinal Weight: ", w)
+ }
+}  
+```
+
+```{r}
+set.seed(7)
+#Creating first Perceptron model
+X1 <- HeartFailure_train[, c("smoking","high_blood_pressure")]
+Y1 <- HeartFailure_train$DEATH_EVENT
+perceptron(X1,Y1,8)
+
+#Take the weight from last Epoch
+weight = c(97.77819, 94.95491)
+
+#Multiply weights to Smoking and High Blood Pressure
+HeartFailure_test$Wsmoking <- HeartFailure_test$smoking*weight[1]
+HeartFailure_test$WHBP <- HeartFailure_test$high_blood_pressure*weight[2]
+
+#Add all weights and call it predict
+HeartFailure_test$predict <- rowSums(HeartFailure_test[,c("Wsmoking","WHBP")])
+
+#Use confusion matrix to evaluate the model performance
+perceptron1predict <- table(HeartFailure_test$DEATH_EVENT == 1, HeartFailure_test$predict > 0) + 
+  table(HeartFailure_test$DEATH_EVENT == 0, HeartFailure_test$predict == 0)
+
+perceptron1predict
+
+
+#Get the accuracy rate
+sum(diag(perceptron1predict))/sum(perceptron1predict)
+```
+
+```{r}
+\
+
+#Take the weight from last Epoch
+weight = c(9.778186, 0.9549091)
+
+#Multiply weights to Age and Platelets
+HeartFailure_test$Wanaemia <- HeartFailure_test$anaemia*weight[1]
+HeartFailure_test$Wdiabetes <- HeartFailure_test$diabetes*weight[2]
+
+#Add all weights and call it predict
+HeartFailure_test$predict <- rowSums(HeartFailure_test[,c("Wanaemia","Wdiabetes")])
+
+#Use confusion matrix to evaluate the model performance
+perceptron4predict <- table(HeartFailure_test$DEATH_EVENT == 1, HeartFailure_test$predict > 0) + 
+  table(HeartFailure_test$DEATH_EVENT == 0, HeartFailure_test$predict == 0)
+
+perceptron4predict
+
+
+#Get the accuracy rate
+sum(diag(perceptron4predict))/sum(perceptron4predict)
+```
+```{r}
+set.seed(7)
+#Creating first Perceptron model
+X5 <- HeartFailure_train[, c("age","platelets")]
+Y5 <- HeartFailure_train$DEATH_EVENT
+perceptron(X5,Y5,8)
+
+#Take the weight from last Epoch
+weight = c(81.77819, 620998)
+
+#Multiply weights to Age and Platelets
+HeartFailure_test$Wage <- HeartFailure_test$age*weight[1]
+HeartFailure_test$Wplatelets <- HeartFailure_test$platelets*weight[2]
+
+#Add all weights and call it predict
+HeartFailure_test$predict <- rowSums(HeartFailure_test[,c("Wage","Wplatelets")])
+
+#Use confusion matrix to evaluate the model performance
+perceptron5predict <- table(HeartFailure_test$DEATH_EVENT == 1, HeartFailure_test$predict > 0) + 
+  table(HeartFailure_test$DEATH_EVENT == 0, HeartFailure_test$predict == 0)
+
+perceptron5predict
+
+
+#Get the accuracy rate
+sum(diag(perceptron5predict))/sum(perceptron5predict)
+```
+
+
+
+
+```{r}
+# Create training and testing data
+# Separate the data into training and testing. Selecting 70% of data for training dataset, 30% for testing dataset.
+
+HeartFailure_index <- sample(nrow(HeartFailure), 0.7 * nrow(HeartFailure)) 
+HeartFailure_train <- HeartFailure[HeartFailure_index, ]
+HeartFailure_test <- HeartFailure[-HeartFailure_index, ]
+```
+
+```{r}
+# First perceptron model
+# Using train data set for building perceptron model
+#Separate the data into input (X variables) and output (Y variable)
+
+X <- HeartFailure_train[, c("age", "smoking")] # Input Matrix 
+y <- HeartFailure_train$DEATH_EVENT # Output Vector
+```
+
+```{r}
+# Run the Perceptron algorithm
+perceptron(X,y, 8)
+```
+
+```{r}
+# Interpretation
+
+#Take the weight from last Epoch (lowest Number Incorrect)
+weight = c(27.0542, 9.883745)
+
+#Have age and smoking multipling weight accordingly
+HeartFailure_test$Wage <- HeartFailure_test$age*weight[1] 
+HeartFailure_test$Wsmoking <- HeartFailure_test$smoking*weight[2]
+
+# Add all calculated weights, and name it as predict
+HeartFailure_test$predict <- rowSums(HeartFailure_test[,c("Wage","Wsmoking")])
+```
+
+```{r}
+# Use confusion matrix to evaluate the model performance
+perceptronpredicttable <- table(HeartFailure_test$DEATH_EVENT == 1, HeartFailure_test$predict > 0) + table(HeartFailure_test$DEATH_EVENT == -1, HeartFailure_test$predict <0)
+
+perceptronpredicttable
+```
+```{r}
+# get the accuracy rate
+sum(diag(perceptronpredicttable))/sum(perceptronpredicttable)
+```
+
+```{r}
+# Second perceptron model
+# Create training and testing data
+# Separate the data into training and testing. Selecting 70% of data for training dataset, 30% for testing dataset.
+
+set.seed(7)
+
+HeartFailure_index2 <- sample(nrow(HeartFailure), 0.7 * nrow(HeartFailure)) 
+HeartFailure_train2 <- HeartFailure[HeartFailure_index2, ]
+HeartFailure_test2 <- HeartFailure[-HeartFailure_index2, ]
+```
+
+```{r}
+# Second perceptron model
+# Using train data set for building perceptron model
+#Separate the data into input (X variables) and output (Y variable)
+
+XX <- HeartFailure_train2[, c("platelets", "high_blood_pressure")] # Input Matrix 
+yy <- HeartFailure_train2$DEATH_EVENT # Output Vector
+```
+
+```{r}
+# Run the Perceptron algorithm
+perceptron(XX,yy, 8)
+```
+
+```{r}
+# Interpretation
+
+#Take the weight from last Epoch (lowest Number Incorrect)
+weight = c(0.0542027, 8.883745)
+
+#Have age and smoking multipling weight accordingly
+HeartFailure_test2$Wplatelets <- HeartFailure_test2$platelets*weight[1] 
+HeartFailure_test2$Whigh_blood_pressure <- HeartFailure_test2$high_blood_pressure*weight[2]
+
+#HeartFailure_test$Wsmoking <- HeartFailure_test$smoking*weight[1]
+#HeartFailure_test$WHBP <- HeartFailure_test$high_blood_pressure*weight[2]
+
+# Add all calculated weights, and name it as predict
+HeartFailure_test2$predict <- rowSums(HeartFailure_test2[,c("Wplatelets","Whigh_blood_pressure")])
+```
+
+```{r}
+# Use confusion matrix to evaluate the model performance
+perceptron1predicttable <- table(HeartFailure_test2$DEATH_EVENT == 1, HeartFailure_test2$predict > 0) + table(HeartFailure_test2$DEATH_EVENT == 0, HeartFailure_test2$predict == 0)
+
+perceptron1predicttable
+```
+
+```{r}
+# get the accuracy rate
+sum(diag(perceptron1predicttable))/sum(perceptron1predicttable)
+
+```
+
+b. Develop at least two perceptrons where there are three or more x-variables and Death event is the y-variable; calculate a measure of accuracy for each
+(10 points)
+
+```{r}
+# First perceptron model
+
+# Create training and testing data
+# Separate the data into training and testing. Selecting 70% of data for training dataset, 30% for testing dataset.
+HeartFailure_index3 <- sample(nrow(HeartFailure), 0.7 * nrow(HeartFailure)) 
+HeartFailure_train3 <- HeartFailure[HeartFailure_index3, ]
+HeartFailure_test3 <- HeartFailure[-HeartFailure_index3, ]
+
+# Using train data set for building perceptron model
+#Separate the data into input (X variables) and output (Y variable)
+XXX <- HeartFailure_train3[, c("age","creatinine_phosphokinase","serum_creatinine", "serum_sodium", "platelets", "time")] # Input Matrix 
+yyy <- HeartFailure_train3$DEATH_EVENT # Output Vector
+
+# Run the Perceptron algorithm
+perceptron(XXX, yyy, 8)
+
+# Interpretation
+#Take the weight from last Epoch (lowest Number Incorrect)
+weight = c(2.204697, -9.281745, 4.551681, -9.339275, 5.900778, 8.351514)
+
+#Have age and smoking multipling weight accordingly
+HeartFailure_test3$Wplatelets <- HeartFailure_test3$age*weight[1] 
+HeartFailure_test3$Wcreatinine_phosphokinase <- HeartFailure_test3$creatinine_phosphokinase*weight[2]
+HeartFailure_test3$Wserum_creatinine <- HeartFailure_test3$serum_creatinine*weight[3]
+HeartFailure_test3$Wserum_sodium <- HeartFailure_test3$serum_sodium*weight[4]
+HeartFailure_test3$Wplatelets <- HeartFailure_test3$platelets*weight[5]
+HeartFailure_test3$Wtime <- HeartFailure_test3$time*weight[6]
+
+# Add all calculated weights, and name it as predict
+HeartFailure_test3$predict <- rowSums(HeartFailure_test3[,c("Wplatelets","Wcreatinine_phosphokinase", "Wserum_creatinine", "Wserum_sodium","Wplatelets", "Wtime")])
+
+# Use confusion matrix to evaluate the model performance
+perceptronpredicttable3 <- table(HeartFailure_test3$DEATH_EVENT == 1, HeartFailure_test3$predict > 0) + table(HeartFailure_test3$DEATH_EVENT == 0, HeartFailure_test3$predict == 0)
+
+perceptronpredicttable3
+
+# get the accuracy rate
+sum(diag(perceptronpredicttable3))/sum(perceptronpredicttable3)
+```
+
+```{r}
+# First perceptron model ka alternative
+# Create training and testing data
+# Separate the data into training and testing. Selecting 70% of data for training dataset, 30% for testing dataset.
+
+HeartFailure_index3a <- sample(nrow(HeartFailure), 0.7 * nrow(HeartFailure)) 
+HeartFailure_train3a <- HeartFailure[HeartFailure_index3a, ]
+HeartFailure_test3a <- HeartFailure[-HeartFailure_index3a, ]
+```
+
+```{r}
+# Using train data set for building perceptron model
+#Separate the data into input (X variables) and output (Y variable)
+age + creatinine_phosphokinase + serum_creatinine + serum_sodium + platelets + time
+XXXa <- HeartFailure_train3[, c("age","high_blood_pressure","sex","smoking")] # Input Matrix 
+yyya <- HeartFailure_train3$DEATH_EVENT # Output Vector
+```
+
+
+```{r}
+# Run the Perceptron algorithm
+perceptron(XXXa, yyya, 8)
+```
+
+```{r}
+# Interpretation
+
+#Take the weight from last Epoch (lowest Number Incorrect)
+weight = c(3.347024, -2.747504, 2.044756, -7.920739)
+
+#Have age and smoking multipling weight accordingly
+HeartFailure_test3$Wplatelets <- HeartFailure_test3$age*weight[1] 
+HeartFailure_test3$Whigh_blood_pressure <- HeartFailure_test3$high_blood_pressure*weight[2]
+HeartFailure_test3$Wsex <- HeartFailure_test3$sex*weight[2]
+HeartFailure_test3$Wsmoking <- HeartFailure_test3$smoking*weight[2]
+
+# Add all calculated weights, and name it as predict
+HeartFailure_test3$predict <- rowSums(HeartFailure_test3[,c("Wplatelets","Whigh_blood_pressure", "Wsex", "Wsmoking")])
+```
+
+```{r}
+# Use confusion matrix to evaluate the model performance
+perceptronpredicttable3a <- table(HeartFailure_test3$DEATH_EVENT == 1, HeartFailure_test3$predict > 0) + table(HeartFailure_test3$DEATH_EVENT == 0, HeartFailure_test3$predict == 0)
+
+perceptronpredicttable3a
+```
+
+```{r}
+# get the accuracy rate
+sum(diag(perceptronpredicttable3a))/sum(perceptronpredicttable3a)
+```
+
+```{r}
+# Second perceptron model
+# Create training and testing data
+# Separate the data into training and testing. Selecting 70% of data for training dataset, 30% for testing dataset.
+
+HeartFailure_index4 <- sample(nrow(HeartFailure), 0.7 * nrow(HeartFailure)) 
+HeartFailure_train4 <- HeartFailure[HeartFailure_index4, ]
+HeartFailure_test4 <- HeartFailure[-HeartFailure_index4, ]
+```
+
+```{r}
+# Second perceptron model
+# Using train data set for building perceptron model
+#Separate the data into input (X variables) and output (Y variable)
+
+X <- HeartFailure_train4[, c("age", "anaemia","creatinine_phosphokinase", "diabetes", "ejection_fraction","platelets", "high_blood_pressure")] # Input Matrix 
+y <- HeartFailure_train4$DEATH_EVENT # Output Vector
+```
+
+```{r}
+# Create the Perceptron Learning Algorithm
+perceptron <- function(X, y, numEpochs) {
+  results <- list()
+  w <- runif(ncol(X), -10, 10) #Initalize weights
+
+# For loop - number of generations(epochs) - number of times dataset is ran through
+for(j in 1:numEpochs) {
+  predictedResult <- numeric(length=100) # Initalize predictedResult vector
+  numIncorrect = 0 # Keeps track of # of missclassified points
+
+  # For loop - loop throught dataset
+  for(i in 1:length(y)) {
+    xi = as.numeric(unlist(X[i,])) # Convert dataframe to vector
+    predictedResult[i] = sign(w %*% xi) # Predict the point
+  
+    # If predicted point is incorrect - change weight
+    if(predictedResult[i] != y[i]) {
+      numIncorrect = numIncorrect + 1 # Add one to # of missclassified points
+      w <- w + as.numeric(y[i]) * xi # Update the weight w <- w + WiXi
+    }
+  }
+  # Print results of this generation(epoch)
+  cat("\nEpoch #: ", j)
+  cat("\nNumber Incorrect: ", numIncorrect)
+  cat("\nFinal Weight: ", w)
+ }
+}  
+```
+
+```{r}
+# Run the Perceptron algorithm
+perceptron(X,y, 8)
+```
+
+```{r}
+# Interpretation
+
+#Take the weight from last Epoch (lowest Number Incorrect)
+weight = c(-2.802817, 2.349683, 4.094498, -3.908247, -6.899839, 9.054003, 7.058395)
+
+#Have age and smoking multipling weight accordingly
+HeartFailure_test4 $Wage <- HeartFailure_test4$age*weight[1] 
+HeartFailure_test4$Wanaemia <- HeartFailure_test4$anaemia*weight[2]
+HeartFailure_test4$Wcreatinine_phosphokinase <- HeartFailure_test4$creatinine_phosphokinase*weight[3]
+HeartFailure_test4$Wdiabetes <- HeartFailure_test4$diabetes*weight[4]
+HeartFailure_test4$Wejection_fraction <- HeartFailure_test4$ejection_fraction*weight[5]
+HeartFailure_test4$Wplatelets <- HeartFailure_test4$platelets*weight[6]
+HeartFailure_test4$Whigh_blood_pressure <- HeartFailure_test4$high_blood_pressure*weight[7]
+
+# Add all calculated weights, and name it as predict
+HeartFailure_test4$predict <- rowSums(HeartFailure_test4[,c("Wplatelets","Whigh_blood_pressure")])
+```
+
+```{r}
+# Use confusion matrix to evaluate the model performance
+perceptronpredicttable4 <- table(HeartFailure_test4$DEATH_EVENT == 1, HeartFailure_test4$predict > 0) + table(HeartFailure_test4$DEATH_EVENT == 0, HeartFailure_test4$predict == 0)
+
+perceptronpredicttable4
+```
+
+```{r}
+# get the accuracy rate
+sum(diag(perceptronpredicttable4))/sum(perceptronpredicttable4)
+```
+
+
+c. Summarize the accuracy of all the perceptron models (5 points)
+```{r}
+
+```
+
+3. Support Vector Machines (SVM) (35 points)
+a. Develop at least two SVMs where there are two x-variables, using continuous and binary x-variables, with Death event as the y-variable; calculate a measure of accuracy for each (10 points)
+```{r}
+age+high_blood_pressure+sex+smoking
+```
+
+```{r}
+# load svm package
+library(e1071)
+HeartFailure$DEATH_EVENT <- as.factor(HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# First SVM
+#To run the SVM,
+model1 <- svm(DEATH_EVENT ~ age + platelets, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model1)
+summary(model1)
+
+#To display the model, type
+#plot(model1,HeartFailure)
+plot(model1, data = HeartFailure, age ~ platelets)
+
+#Predict the model
+heartpredict1 <- predict(model1,HeartFailure)
+predicttable1 <- table(heartpredict1, HeartFailure$DEATH_EVENT)
+predicttable1
+
+#Calculate the accuracy
+sum(diag(predicttable1))/sum(predicttable1)
+
+# Prediction
+#predicteda <- predict(model1, HeartFailure)
+
+# Create a confusion matrix
+#confusionMatrix(predicteda, HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# Second SVM
+#To run the SVM,
+model2 <- svm(DEATH_EVENT ~ age + time, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model2)
+summary(model2)
+
+#To display the model, type
+plot(model2, data = HeartFailure, age ~ time)
+
+#Predict the model
+heartpredict2 <- predict(model2,HeartFailure)
+predicttable2 <- table(heartpredict2, HeartFailure$DEATH_EVENT)
+predicttable2
+
+#Calculate the accuracy
+sum(diag(predicttable2))/sum(predicttable2)
+
+# Prediction
+#predictedb <- predict(model2, HeartFailure)
+
+# Create a confusion matrix
+#confusionMatrix(predicteda, HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# Second SVM' alternative
+#To run the SVM,
+model3 <- svm(DEATH_EVENT ~ ejection_fraction + age, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model3)
+summary(model3)
+
+#To display the model, type
+plot(model3, data = HeartFailure, ejection_fraction ~ age)
+
+# Prediction
+#predictedc <- predict(model3, HeartFailure)
+
+# Create a confusion matrix
+#confusionMatrix(predicteda, HeartFailure$DEATH_EVENT)
+
+```
+
+```{r}
+# Second SVM' alternatives' alternative
+#To run the SVM,
+model4 <- svm(DEATH_EVENT ~ ejection_fraction + platelets, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model4)
+summary(model4)
+
+#To display the model, type
+plot(model4, data = HeartFailure, ejection_fraction ~ platelets)
+
+# Prediction
+predicteda <- predict(model4, HeartFailure)
+
+# Create a confusion matrix
+confusionMatrix(predicteda, HeartFailure$DEATH_EVENT)
+```
+
+b. Develop at least two SVMs where there are three or more x-variables, with Death event as the y-variable; calculate a measure of accuracy for each (10 points)
+```{r}
+# First SVM
+#To run the SVM,
+model6 <- svm(DEATH_EVENT ~ age + creatinine_phosphokinase + ejection_fraction, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model6)
+summary(model6)
+
+#To display the model, type
+#plot(model6, data = HeartFailure, age ~ creatinine_phosphokinase ~ ejection_fraction)
+
+predicted <- predict(model6, HeartFailure)
+
+# Create a confusion matrix
+confusionMatrix(predicted, HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# Second SVM
+#To run the SVM,
+model7 <- svm(DEATH_EVENT ~ age + high_blood_pressure + sex + smoking, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model7)
+summary(model7)
+
+#To display the model, type
+#plot(model6, data = HeartFailure, age ~ high_blood_pressure ~ sex ~ smoking)
+
+predicted2 <- predict(model7, HeartFailure)
+
+# Create a confusion matrix
+confusionMatrix(predicted2, HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# Second SVM ka alternative
+#To run the SVM,
+model7a <- svm(DEATH_EVENT ~ age + high_blood_pressure + sex + smoking + time, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model7a)
+summary(model7a)
+
+#To display the model, type
+#plot(model6, data = HeartFailure, age ~ high_blood_pressure ~ sex ~ smoking)
+
+predicted2 <- predict(model7a, HeartFailure)
+
+# Create a confusion matrix
+confusionMatrix(predicted2, HeartFailure$DEATH_EVENT)
+```
+
+```{r}
+# Third SVM
+# To run the SVM,
+model8 <- svm(DEATH_EVENT ~ age + creatinine_phosphokinase + serum_creatinine + serum_sodium + platelets + time, data = HeartFailure)
+
+#To print the model and a summary, type
+print(model8)
+summary(model8)
+
+#To display the model, type
+#plot(model8, data = HeartFailure, age ~ creatinine_phosphokinase ~ serum_creatinine ~ serum_sodium ~ platelets)
+
+predicted3 <- predict(model8, HeartFailure)
+
+# Create a confusion matrix
+confusionMatrix(predicted3, HeartFailure$DEATH_EVENT)
+```
+
+c. Generate a graphic showing the results of each of the SVM results (10 points)
+```{r}
+
+```
+
+d. Summarize the accuracy of all the SVM models (5 points)
+```{r}
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
